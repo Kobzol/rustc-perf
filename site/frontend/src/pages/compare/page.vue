@@ -292,13 +292,16 @@ loadCompareData(selector, loading);
       />
       <template v-if="tab === Tab.CompileTime">
         <QuickLinks :stat="selector.stat" :key="quickLinksKey" />
-        <Filters
-          :defaultFilter="defaultFilter"
-          :initialFilter="filter"
-          @change="updateFilter"
-          @export="exportData"
-        />
-        <OverallTable :summary="filteredSummary" />
+        <div class="filter-wrapper">
+          <Filters
+            class="filter"
+            :defaultFilter="defaultFilter"
+            :initialFilter="filter"
+            @change="updateFilter"
+            @export="exportData"
+          />
+          <OverallTable class="overall" :summary="filteredSummary" />
+        </div>
         <Aggregations :cases="testCases" />
         <Benchmarks
           :data="data"
@@ -314,3 +317,29 @@ loadCompareData(selector, loading);
   <br />
   <AsOf :info="info" />
 </template>
+
+<style scoped lang="scss">
+.filter-wrapper {
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 1200px) {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+.overall {
+  @media (min-width: 1200px) {
+    width: 400px;
+  }
+}
+.filter {
+  flex-grow: 1;
+  margin-top: 0;
+  margin-right: 20px;
+
+  @media (min-width: 1200px) {
+    align-self: start;
+  }
+}
+</style>

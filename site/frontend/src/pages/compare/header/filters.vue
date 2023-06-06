@@ -43,7 +43,7 @@ watch(
           </div>
           <div class="section section-list-wrapper">
             <div class="section-heading">
-              <div style="width: 160px">
+              <div class="label">
                 <span>Profiles</span>
                 <Tooltip
                   >The different compilation profiles (check, debug, opt,
@@ -106,7 +106,7 @@ watch(
           </div>
           <div class="section section-list-wrapper">
             <div class="section-heading">
-              <div style="width: 160px">
+              <div class="label">
                 <span>Scenarios</span>
                 <Tooltip
                   >The different scenarios based on their incremental
@@ -177,7 +177,7 @@ watch(
           </div>
           <div class="section section-list-wrapper">
             <div class="section-heading">
-              <div style="width: 160px">
+              <div class="label">
                 <span>Categories</span>
                 <Tooltip
                   >Select benchmarks based on their category (primary or
@@ -289,5 +289,8 @@ watch(
 
 .cache-label {
   font-weight: bold;
+}
+.label {
+  width: 130px;
 }
 </style>
