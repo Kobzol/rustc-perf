@@ -84,6 +84,7 @@ fn main() {
                     .arg("-x;")
                     .arg("-e")
                     .arg("instructions:u,cycles:u,task-clock,cpu-clock,faults,context-switches,branch-misses,cache-misses")
+                    .env("MALLOC_CONF", "thp:always,metadata_thp:always")
                     .arg("--log-fd")
                     .arg("1")
                     .arg("setarch")
