@@ -2,6 +2,7 @@ use analyzeme::ProfilingData;
 use indicatif::ProgressIterator;
 use std::fmt::Write as _;
 use std::fs::File;
+use std::io;
 use std::io::BufWriter;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -10,7 +11,7 @@ use std::process::Command;
 fn download_crates() {
     use crates_io_api::{CratesQuery, Sort, SyncClient};
     let client = SyncClient::new(
-        "rustc-perf-analysis (berykubik@gmail.com)",
+        "rustc-perf-analysis (someone@somewhere.org)",
         std::time::Duration::from_millis(1000),
     )
     .unwrap();
@@ -30,7 +31,7 @@ fn download_crates() {
     }
     for krate in crates {
         Command::new("./target/release/collector")
-            .current_dir("/projects/personal/rust/rustc-perf")
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .arg("download")
             .arg("crate")
             .arg(krate.0)
@@ -205,11 +206,25 @@ fn run_benchmark(
     let diff = diff.replace(patched_path.to_str().unwrap(), &format!("/{relative_path}"));
     std::fs::write(&patch_file, &diff)?;
 
+    // TODO see if can get the right triple as an env var directly...
+    #[cfg(target_arch = "x86_64")]
+    let arch = "x86_64";
+    #[cfg(target_arch = "arm")]
+    let arch = "arm";
+    #[cfg(target_arch = "aarch64")]
+    let arch = "aarch64";
+
+    #[cfg(target_os = "linux")]
+    let os = "unknown-linux-gnu";
+    #[cfg(target_os = "macos")]
+    let os = "apple-darwin";
+
+    let rustc_path = format!("{}/.rustup/toolchains/nightly-{arch}-{os}/bin/rustc", env!("HOME"));
     let status = Command::new("./target/release/collector")
         .current_dir(root_dir)
         .arg("profile_local")
         .arg("self-profile")
-        .arg("/home/kobzol/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc")
+        .arg(rustc_path)
         .arg("--include")
         .arg(name)
         .status()?;
@@ -330,7 +345,11 @@ fn main() -> anyhow::Result<()> {
         //     || name.contains("eza")
     });
 
-    let root_dir = PathBuf::from("/projects/personal/rust/rustc-perf");
+    // Not part of the workspace so "CARGO_MANIFEST_DIR" resolves to /analysis
+    let analysis_root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let root_dir = analysis_root_dir.parent()
+        .ok_or(io::Error::new(io::ErrorKind::NotFound,
+                              "Could not get 'root_dir' of 'rustc-perf'"))?;
     let result_dir = root_dir.join("results");
 
     let mut results: Vec<BenchResult> = vec![];
