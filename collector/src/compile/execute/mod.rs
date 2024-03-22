@@ -265,6 +265,8 @@ impl<'a> CargoProcess<'a> {
                 cmd.arg("-Zunstable-options");
                 cmd.arg("-Ztimings");
             }
+            cmd.arg("--bin");
+            cmd.arg("actix-web-todo-app");
             cmd.arg("--");
 
             match self.backend {

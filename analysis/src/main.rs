@@ -66,6 +66,18 @@ fn compute_compilation_sections(profile: &ProfilingData) -> Vec<CompilationSecti
         if first_event_start.is_none() {
             first_event_start = event.payload.timestamp().map(|t| t.start());
         }
+        if event.label == "macro_expand_crate" {
+            sections.push(CompilationSection {
+                name: "macro".to_string(),
+                value: event
+                    .payload
+                    .timestamp()
+                    .map(|t| t.end().duration_since(t.start()))
+                    .unwrap()
+                    .unwrap()
+                    .as_nanos() as u64,
+            });
+        }
         if event.label == "type_check_crate" {
             sections.push(CompilationSection {
                 name: "typeck".to_string(),
@@ -146,6 +158,7 @@ struct BenchResult {
     frontend: u64,
     backend: u64,
     linker: u64,
+    macro_expand: u64,
     typeck: u64,
     borrowck: u64,
     metadata: u64,
@@ -205,20 +218,20 @@ fn run_benchmark(
     let diff = diff.replace(patched_path.to_str().unwrap(), &format!("/{relative_path}"));
     std::fs::write(&patch_file, &diff)?;
 
-    let status = Command::new("./target/release/collector")
-        .current_dir(root_dir)
-        .arg("profile_local")
-        .arg("self-profile")
-        .arg("/home/kobzol/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc")
-        .arg("--include")
-        .arg(name)
-        .status()?;
-    if !status.success() {
-        return Err(anyhow::anyhow!(
-            "Failed to benchmark {name}: {}",
-            status.code().unwrap_or(-1)
-        ));
-    }
+    // let status = Command::new("./target/release/collector")
+    //     .current_dir(root_dir)
+    //     .arg("profile_local")
+    //     .arg("self-profile")
+    //     .arg("/home/kobzol/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc")
+    //     .arg("--include")
+    //     .arg(name)
+    //     .status()?;
+    // if !status.success() {
+    //     return Err(anyhow::anyhow!(
+    //         "Failed to benchmark {name}: {}",
+    //         status.code().unwrap_or(-1)
+    //     ));
+    // }
 
     for dir in std::fs::read_dir(result_dir)?
         .filter_map(|e| e.ok())
@@ -267,6 +280,11 @@ fn run_benchmark(
                 .find(|s| s.name == "Linker")
                 .map(|s| s.value)
                 .ok_or_else(|| anyhow::anyhow!("Could not find linker"))?,
+            macro_expand: sections
+                .iter()
+                .find(|s| s.name == "macro")
+                .map(|s| s.value)
+                .unwrap_or(0),
             typeck: sections
                 .iter()
                 .find(|s| s.name == "typeck")
@@ -292,7 +310,7 @@ fn save_results(results: &[BenchResult]) -> anyhow::Result<()> {
     let mut file = BufWriter::new(File::create("results.csv")?);
     writeln!(
         file,
-        "benchmark,kind,profile,scenario,frontend,backend,linker,borrowck,typeck,metadata"
+        "benchmark,kind,profile,scenario,frontend,backend,linker,macro,borrowck,typeck,metadata"
     )?;
     for result in results {
         let BenchResult {
@@ -304,12 +322,13 @@ fn save_results(results: &[BenchResult]) -> anyhow::Result<()> {
             backend,
             linker,
             typeck,
+            macro_expand,
             borrowck,
             metadata,
         } = result;
         writeln!(
             file,
-            "{benchmark},{kind},{profile},{scenario},{frontend},{backend},{linker},{borrowck},{typeck},{metadata}"
+            "{benchmark},{kind},{profile},{scenario},{frontend},{backend},{linker},{macro_expand},{borrowck},{typeck},{metadata}"
         )?;
     }
     Ok(())
@@ -323,7 +342,7 @@ fn main() -> anyhow::Result<()> {
     benchmarks.sort();
     benchmarks.retain(|b| {
         let name = b.file_name().unwrap().to_str().unwrap();
-        name.contains("diesel")
+        name.contains("actix")
         // name.contains("du-dust") || name.contains("hyperfine")
         // name.contains("bat")
         //     || name.contains("fd-find")
@@ -335,9 +354,9 @@ fn main() -> anyhow::Result<()> {
 
     let mut results: Vec<BenchResult> = vec![];
     for benchmark in benchmarks.iter().progress() {
-        if result_dir.is_dir() {
-            std::fs::remove_dir_all(&result_dir)?;
-        }
+        // if result_dir.is_dir() {
+        //     std::fs::remove_dir_all(&result_dir)?;
+        // }
         if let Err(error) = run_benchmark(&benchmark, &root_dir, &result_dir, &mut results) {
             println!("{} has failed: {error:?}", benchmark.display());
         }

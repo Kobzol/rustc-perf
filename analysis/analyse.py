@@ -34,7 +34,8 @@ def plot_bar(data: pd.DataFrame, profile: Optional[str] = None, scenario: Option
              kind: Optional[str] = None, **kwargs):
     data = filter_data(data=data, profile=profile, scenario=scenario, kind=kind)
     data = pd.melt(data, id_vars=["profile", "scenario", "kind"],
-                   value_vars=["frontend", "backend", "linker", "borrowck", "typeck", "metadata"],
+                   value_vars=["frontend", "backend", "linker", "macro", "borrowck", "typeck",
+                               "metadata"],
                    var_name="section",
                    value_name="Percent")
 
@@ -43,6 +44,7 @@ def plot_bar(data: pd.DataFrame, profile: Optional[str] = None, scenario: Option
     avg_borrowck = float(data[data["section"] == "borrowck"]["Percent"].mean())
     avg_typeck = float(data[data["section"] == "typeck"]["Percent"].mean())
     avg_metadata = float(data[data["section"] == "metadata"]["Percent"].mean())
+    avg_macro = float(data[data["section"] == "macro"]["Percent"].mean())
     fe_base = avg_backend + avg_linker
 
     args = dict(align="edge")
@@ -60,6 +62,9 @@ def plot_bar(data: pd.DataFrame, profile: Optional[str] = None, scenario: Option
     fe_base += avg_typeck
     plt.bar(y=y_offset, x=[fe_base], width=[avg_metadata], color=PALETTE[5],
             height=inner_height, **args)
+    fe_base += avg_metadata
+    plt.bar(y=y_offset, x=[fe_base], width=[avg_macro], color=PALETTE[6],
+            height=inner_height, **args)
     plt.bar(y=0, x=[avg_linker], width=[avg_backend], color=PALETTE[1], height=height, **args)
     plt.bar(y=0, x=[0], width=[avg_linker], color=PALETTE[2], height=height, **args)
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
@@ -73,6 +78,7 @@ def create_bars(with_metadata: bool = True) -> List[mpatches.Patch]:
         mpatches.Patch(color=PALETTE[2], label="Linker"),
         mpatches.Patch(color=PALETTE[3], label="borrowck"),
         mpatches.Patch(color=PALETTE[4], label="typeck"),
+        mpatches.Patch(color=PALETTE[6], label="macro"),
     ]
     if with_metadata:
         bars.append(
@@ -128,17 +134,18 @@ def single_benchmark(df: pd.DataFrame, benchmark: str, metadata: bool = False):
                  scenario="IncrPatched0", metadata=True)
 
 
-df = pd.read_csv("results-full.csv")
+df = pd.read_csv("results.csv")
 print(df.groupby(["benchmark", "kind"]).size().reset_index()["kind"].value_counts())
 
 df["total"] = df["frontend"] + df["backend"] + df["linker"]
-for key in ("frontend", "backend", "linker", "borrowck", "typeck", "metadata"):
+for key in ("frontend", "backend", "linker", "macro", "borrowck", "typeck", "metadata"):
     df[key] = (df[key].astype(np.float32) / df["total"]) * 100
 df = df.drop(columns=["total"])
 
-single_benchmark(df, "ripgrep-14.1.0")
-single_benchmark(df, "regex-automata-0.4.6", metadata=True)
-single_benchmark(df, "diesel-1.4.8", metadata=True)
+# single_benchmark(df, "ripgrep-14.1.0")
+# single_benchmark(df, "regex-automata-0.4.6", metadata=True)
+# single_benchmark(df, "diesel-1.4.8", metadata=True)
+single_benchmark(df, "actix-web-todo-app")
 
 grid(df, "ripgrep", "ripgrep-14.1.0")
 grid(df, "binaries", kind="bin")
