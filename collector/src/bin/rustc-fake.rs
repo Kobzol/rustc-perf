@@ -82,7 +82,7 @@ fn main() {
     // avoid. rustc-perf can accept the higher cost of always verifying hashes,
     // and we currently prefer to avoid exposing a means of hard-disabling
     // verification.
-    args.push(OsString::from("-Zincremental-verify-ich"));
+    //args.push(OsString::from("-Zincremental-verify-ich"));
 
     if let Some(pos) = args.iter().position(|arg| arg == "--wrap-rustc-with") {
         // Strip out the flag and its argument, and run rustc under the wrapper
